@@ -14,10 +14,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Copy Local Vendor Folder
-        run: |
-          Copy-Item -Path "C:\Users\Operations Lateef\work\wordcast_app\WordCast_LIVE\Wordcast_website\backend\vendor" -Destination .\vendor -Recurse -Force
-
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -32,3 +28,4 @@ jobs:
             .env.example
             .env
             tests/**
+            vendor/**

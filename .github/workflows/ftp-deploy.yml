@@ -14,12 +14,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2' # Change this if your Laravel requires a different version
-          tools: composer:v2
-
       - name: Install Dependencies (Vendor Folder)
         run: composer install --optimize-autoloader --no-dev
 

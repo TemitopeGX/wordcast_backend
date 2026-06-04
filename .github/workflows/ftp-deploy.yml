@@ -1,0 +1,32 @@
+name: Deploy Laravel Backend to cPanel via FTP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to cPanel
+    runs-on: self-hosted # Uses your self-hosted runner
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }} # Example: ftp.api.wordcastlive.site
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # The directory on cPanel that api.wordcastlive.site points to. 
+          # You might need to change this if it's not public_html
+          server-dir: /
+          # Exclude git files and local environment files
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .env.example
+            .env
+            tests/**

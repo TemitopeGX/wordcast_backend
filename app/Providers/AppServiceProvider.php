@@ -20,6 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Fix for cPanel older MySQL "Specified key was too long" error
+        \Illuminate\Support\Facades\Schema::defaultStringLength(191);
+
         // 'admin' Gate — used by ProContent admin endpoints
         // A user is an admin when their `role` column is set to 'admin'.
         Gate::define('admin', function ($user) {

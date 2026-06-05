@@ -12,6 +12,6 @@ Route::get('/migrate', function (\Illuminate\Http\Request $request) {
         abort(403, 'Unauthorized action.');
     }
     
-    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+    \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--force' => true]);
     return 'Migrations completed successfully!';
 });

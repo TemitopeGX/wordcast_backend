@@ -197,14 +197,28 @@ class LicenseController extends Controller
         $user    = $appToken->user;
         $license = $user->license;
 
-        if (!$license || !$license->is_active || $license->isExpired()) {
-            return response()->json(['success' => false, 'message' => 'No active license.'], 422);
-        }
-
-        // Delete used token
+        // Delete used token regardless of plan
         $appToken->delete();
 
-        // Auto-activate this device if seats available
+        // Free plan users (no license record) — sign them in with free access
+        if (!$license || !$license->is_active || $license->isExpired()) {
+            return response()->json([
+                'success'     => true,
+                'plan'        => 'free',
+                'expires_at'  => null,
+                'seat_limit'  => 1,
+                'seats_used'  => 0,
+                'license_key' => null,   // no key for free users
+                'device_name' => $data['device_name'] ?? null,
+                'user'        => [
+                    'name'  => $user->name,
+                    'email' => $user->email,
+                ],
+                'ai_key'      => null,
+            ]);
+        }
+
+        // Paid plan — auto-activate this device if seats available
         $activateRequest = new Request(array_merge($data, ['license_key' => $license->license_key]));
         return $this->activate($activateRequest);
     }

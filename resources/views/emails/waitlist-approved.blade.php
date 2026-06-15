@@ -64,8 +64,7 @@
           <p><strong>Note:</strong> For security reasons, this setup link will expire 48 hours after you first click it. Please complete your setup promptly.</p>
         </div>
         
-        <p style="font-size: 13px; margin-bottom: 8px;">If the button above does not work, paste this URL into your browser:</p>
-        <p style="font-size: 13px; word-break: break-all; margin-bottom: 32px;">{{ $setupUrl }}</p>
+        <p style="font-size: 13px; margin-bottom: 32px;">If the button above does not work, <a href="{{ $setupUrl }}" style="color: #FF6600;">click here to continue</a>.</p>
         
         <p style="margin-bottom: 0;">&mdash; The WordCast Live Team</p>
       </div>

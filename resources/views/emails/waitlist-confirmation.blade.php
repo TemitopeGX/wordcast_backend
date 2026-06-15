@@ -89,14 +89,14 @@
       </div>
       
       <p class="footer-disclaimer">
-        Want to change which emails you receive from us? You can <a href="#">update your preferences</a> or <a href="#">unsubscribe</a>. You can view our <a href="https://wordcastlive.site/privacy">privacy policy</a>.
+        Want to change which emails you receive from us? You can <a href="https://wordcastlive.site/preferences">update your preferences</a> or <a href="https://wordcastlive.site/unsubscribe">unsubscribe</a>. You can view our <a href="https://wordcastlive.site/privacy">privacy policy</a>.
       </p>
       
       <p class="footer-copyright">&copy; {{ date('Y') }} WordCast Live. All Rights Reserved.</p>
       
       <div class="footer-bottom-links">
         <a href="https://wordcastlive.site/privacy">Privacy policy</a>
-        <a href="#">Unsubscribe</a>
+        <a href="https://wordcastlive.site/unsubscribe">Unsubscribe</a>
         <a href="https://wordcastlive.site/terms">Terms of Service</a>
       </div>
     </div>

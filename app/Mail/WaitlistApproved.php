@@ -17,8 +17,10 @@ class WaitlistApproved extends Mailable
 
     public function __construct(public Waitlist $entry, string $token)
     {
-        $dashboardUrl   = config('app.dashboard_url', env('APP_DASHBOARD_URL', 'https://dashboard.wordcastlive.site'));
-        $this->setupUrl = rtrim($dashboardUrl, '/') . '/setup/' . $token;
+        // The Next.js frontend has the setup route at /setup/[token], not /dashboard/setup/[token]
+        $frontendUrls = explode(',', env('FRONTEND_URL', 'https://wordcastlive.site'));
+        $frontendUrl = rtrim(trim($frontendUrls[0]), '/');
+        $this->setupUrl = $frontendUrl . '/setup/' . $token;
     }
 
     public function envelope(): Envelope

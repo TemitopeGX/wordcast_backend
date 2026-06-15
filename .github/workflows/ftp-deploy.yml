@@ -22,6 +22,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           # Keep this as / as it deploys to the root of the FTP account
           server-dir: /
+          timeout: 300000
           exclude: |
             **/.git*
             **/.git*/**

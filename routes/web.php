@@ -12,6 +12,11 @@ Route::get('/clear', function () {
     return 'Cache cleared successfully!';
 });
 
+Route::get('/run-migrations', function () {
+    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+    return 'Migrations run successfully!';
+});
+
 Route::get('/preview/waitlist-confirmation', function () {
     $entry = new Waitlist(['name' => 'John Doe', 'email' => 'john@example.com']);
     return new WaitlistConfirmation($entry);

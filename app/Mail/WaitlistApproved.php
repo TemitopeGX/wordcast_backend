@@ -24,7 +24,7 @@ class WaitlistApproved extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '🎉 You\'ve been approved — Set up your WordCast Live account',
+            subject: 'You have been approved - Set up your WordCast Live account',
         );
     }
 

@@ -255,4 +255,42 @@ class SettingsController extends Controller
             return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
+
+    // ── POST /admin/settings/app-control ───────────────────────────────────────
+    public function saveAppControl(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'show_pricing'              => 'required|boolean',
+            'pricing_coming_soon_text'  => 'nullable|string|max:200',
+        ]);
+
+        PlatformSettings::set('app_control_show_pricing', $validated['show_pricing'], 'app_control', 'boolean');
+        PlatformSettings::set('app_control_pricing_coming_soon_text', $validated['pricing_coming_soon_text'] ?? 'Pricing plans coming soon', 'app_control');
+
+        return response()->json(['status' => 'success', 'message' => 'App control settings saved.']);
+    }
+
+    // ── POST /admin/settings/app-control/toggle ────────────────────────────────
+    // Called immediately on toggle click (no save button)
+    public function toggleAppControl(Request $request): JsonResponse
+    {
+        $request->validate([
+            'key'   => 'required|string|in:app_control_show_pricing',
+            'value' => 'required|boolean',
+        ]);
+
+        PlatformSettings::set($request->key, $request->boolean('value'), 'app_control', 'boolean');
+
+        return response()->json(['status' => 'success']);
+    }
+
+    // ── GET /api/app/settings/public ───────────────────────────────────────────
+    // Public — used by the website pricing page
+    public function publicAppSettings(): JsonResponse
+    {
+        return response()->json([
+            'show_pricing'             => PlatformSettings::get('app_control_show_pricing', true),
+            'pricing_coming_soon_text' => PlatformSettings::get('app_control_pricing_coming_soon_text', 'Pricing plans coming soon'),
+        ]);
+    }
 }

@@ -150,6 +150,45 @@ class AuthController extends Controller
         ]);
     }
 
+    // ── Update Profile Picture (Avatar) ────────────────────────
+    public function updateAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ]);
+
+        $user = $request->user();
+
+        // Delete old avatar if exists
+        if ($user->avatar_url) {
+            $oldPath = public_path($user->avatar_url);
+            if (file_exists($oldPath)) {
+                @unlink($oldPath);
+            }
+        }
+
+        $file = $request->file('avatar');
+        $filename = 'avatar_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+        
+        // Ensure destination directory exists
+        $destinationPath = public_path('uploads/avatars');
+        if (!file_exists($destinationPath)) {
+            mkdir($destinationPath, 0755, true);
+        }
+
+        $file->move($destinationPath, $filename);
+
+        $user->update([
+            'avatar_url' => '/uploads/avatars/' . $filename,
+        ]);
+
+        return response()->json([
+            'message' => 'Profile picture updated successfully',
+            'avatar_url' => url('/uploads/avatars/' . $filename),
+            'user' => $this->formatUser($user),
+        ]);
+    }
+
     // ── Update Password ───────────────────────────────────────
     public function updatePassword(Request $request)
     {
@@ -216,6 +255,7 @@ class AuthController extends Controller
             'name'                 => $user->name,
             'email'                => $user->email,
             'church_name'          => $user->church_name,
+            'avatar_url'           => $user->avatar_url ? (str_starts_with($user->avatar_url, 'http') ? $user->avatar_url : url($user->avatar_url)) : 'https://res.cloudinary.com/dg9elcrcw/image/upload/v1781202901/PROFILE_LOGO_2x_vpvu6w.jpg',
             'role'                 => $user->role,
             'plan'                 => $user->plan,
             'subscription_status'  => $subscriptionStatus, // active | grace | expired

@@ -16,6 +16,7 @@ use App\Http\Controllers\CouponController;
 use App\Http\Controllers\BlogController;
 use App\Models\PlatformSettings;
 use App\Models\SubscriptionPlan;
+use App\Http\Controllers\WaitlistController;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 Route::get('/plans', function() {
@@ -24,6 +25,15 @@ Route::get('/plans', function() {
         'plans' => SubscriptionPlan::where('is_active', true)->orderBy('sort_order')->get()
     ]);
 });
+
+// Public app settings (used by website pricing page)
+Route::get('/app/settings/public', [SettingsController::class, 'publicAppSettings']);
+
+// ── Waitlist (public) ─────────────────────────────────────────────────────────
+Route::post('/waitlist',                       [WaitlistController::class, 'store']);
+Route::get('/waitlist/count',                  [WaitlistController::class, 'count']);
+Route::get('/waitlist/validate/{token}',       [WaitlistController::class, 'validateToken']);
+Route::post('/waitlist/complete/{token}',      [WaitlistController::class, 'completeSetup']);
 
 // ── Public Blog routes ────────────────────────────────────────────────────────
 Route::prefix('blog')->group(function () {
@@ -62,6 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout',         [AuthController::class, 'logout']);
     Route::get('/auth/me',              [AuthController::class, 'me']);
     Route::put('/auth/profile',         [AuthController::class, 'updateProfile']);
+    Route::post('/auth/profile/avatar', [AuthController::class, 'updateAvatar']);
     Route::put('/auth/password',        [AuthController::class, 'updatePassword']);
     Route::post('/auth/app-token',      [AuthController::class, 'generateAppToken']);
     Route::get('/auth/dashboard',       [DashboardController::class, 'index']);
@@ -184,6 +195,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/system/clear-cache',      [SettingsController::class, 'clearCache']);
             Route::get('/system/backup',            [SettingsController::class, 'backupDatabase']);
             Route::post('/billing/test-webhook',    [SettingsController::class, 'testWebhook']);
+            Route::post('/app-control',              [SettingsController::class, 'saveAppControl']);
+            Route::post('/app-control/toggle',       [SettingsController::class, 'toggleAppControl']);
         });
 
         // Subscription plans + coupons
@@ -218,6 +231,17 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/posts/{id}',         [BlogController::class, 'update']);
             Route::delete('/posts/{id}',      [BlogController::class, 'destroy']);
             Route::patch('/posts/{id}/toggle',[BlogController::class, 'toggleStatus']);
+        });
+
+        // Waitlist (admin)
+        Route::prefix('waitlist')->group(function () {
+            Route::get('/',                    [WaitlistController::class, 'adminIndex']);
+            Route::post('/approve-bulk',       [WaitlistController::class, 'approveBulk']);
+            Route::get('/export',              [WaitlistController::class, 'export']);
+            Route::post('/{id}/approve',       [WaitlistController::class, 'approve']);
+            Route::post('/{id}/resend-invite', [WaitlistController::class, 'resendInvite']);
+            Route::post('/{id}/reject',        [WaitlistController::class, 'reject']);
+            Route::delete('/{id}',             [WaitlistController::class, 'destroy']);
         });
     });
 });

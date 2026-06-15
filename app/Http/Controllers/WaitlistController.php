@@ -60,7 +60,7 @@ class WaitlistController extends Controller
 
         // Queue confirmation email
         try {
-            Mail::to($entry->email)->queue(new WaitlistConfirmation($entry));
+            Mail::to($entry->email)->send(new WaitlistConfirmation($entry));
         } catch (\Exception $e) {
             \Log::warning('WaitlistConfirmation email failed: ' . $e->getMessage());
         }
@@ -181,7 +181,7 @@ class WaitlistController extends Controller
 
         // Queue welcome email
         try {
-            Mail::to($user->email)->queue(new WaitlistWelcome($user, $licenseKey));
+            Mail::to($user->email)->send(new WaitlistWelcome($user, $licenseKey));
         } catch (\Exception $e) {
             \Log::warning('WaitlistWelcome email failed: ' . $e->getMessage());
         }
@@ -267,7 +267,7 @@ class WaitlistController extends Controller
         ]);
 
         try {
-            Mail::to($entry->email)->queue(new WaitlistApproved($entry, $token));
+            Mail::to($entry->email)->send(new WaitlistApproved($entry, $token));
         } catch (\Exception $e) {
             \Log::warning('WaitlistApproved email failed: ' . $e->getMessage());
         }
@@ -297,7 +297,7 @@ class WaitlistController extends Controller
                     'invite_sent_at' => now(),
                 ]);
                 try {
-                    Mail::to($entry->email)->queue(new WaitlistApproved($entry, $token));
+                    Mail::to($entry->email)->send(new WaitlistApproved($entry, $token));
                 } catch (\Exception $e) {
                     \Log::warning('WaitlistApproved bulk email failed: ' . $e->getMessage());
                 }
@@ -332,7 +332,7 @@ class WaitlistController extends Controller
         ]);
 
         try {
-            Mail::to($entry->email)->queue(new WaitlistApproved($entry, $token));
+            Mail::to($entry->email)->send(new WaitlistApproved($entry, $token));
         } catch (\Exception $e) {
             \Log::warning('WaitlistApproved resend failed: ' . $e->getMessage());
         }

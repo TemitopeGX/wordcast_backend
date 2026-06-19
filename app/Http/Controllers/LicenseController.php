@@ -293,22 +293,24 @@ class LicenseController extends Controller
 
     /**
      * POST /api/license/regenerate  (authenticated) — invalidate old key, generate new
+     * Preserves the plan-specific key prefix (WCL-BETA-, WCL-CAMPUS-, etc.)
      */
     public function regenerate(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user    = $request->user();
         $license = $user->license;
+
         if (!$license) {
             $rawPlan = $user->plan ?? 'free';
             if ($rawPlan === 'free' || $rawPlan === 'starter') {
                 return response()->json(['success' => false, 'message' => 'Free plans cannot generate a license. Please upgrade.'], 403);
             }
 
-            $validPlans = ['pro', 'campus'];
+            $validPlans = ['pro', 'campus', 'beta'];
             $plan = in_array($rawPlan, $validPlans) ? $rawPlan : 'pro';
-            
+
             $license = $user->license()->create([
-                'license_key' => 'WCL-' . strtoupper(Str::uuid()),
+                'license_key' => $this->makeKey($plan),
                 'plan'        => $plan,
                 'seat_limit'  => $plan === 'campus' ? 10 : 3,
                 'is_active'   => true,
@@ -316,14 +318,31 @@ class LicenseController extends Controller
             $license->refresh();
         }
 
-        // Deactivate all devices (they must reactivate with the new key)
+        // Deactivate all devices — they must re-activate with the new key
         $license->devices()->delete();
 
-        $license->update([
-            'license_key' => 'WCL-' . strtoupper(Str::uuid()),
-        ]);
+        // Generate new key that preserves the plan prefix
+        $license->update(['license_key' => $this->makeKey($license->plan)]);
 
         return response()->json(['success' => true, 'license_key' => $license->license_key]);
+    }
+
+    /**
+     * Generate a plan-prefixed license key.
+     *   beta   → WCL-BETA-XXXX-XXXX-XXXX-XXXX
+     *   campus → WCL-CAMPUS-XXXX-XXXX-XXXX-XXXX
+     *   pro    → WCL-XXXX-XXXX-XXXX-XXXX
+     */
+    private function makeKey(string $plan): string
+    {
+        $segments = strtoupper(substr(str_replace('-', '', Str::uuid()), 0, 16));
+        $parts    = str_split($segments, 4);
+
+        return match ($plan) {
+            'beta'   => 'WCL-BETA-'   . implode('-', $parts),
+            'campus' => 'WCL-CAMPUS-' . implode('-', $parts),
+            default  => 'WCL-'        . implode('-', $parts),
+        };
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

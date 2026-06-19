@@ -41,7 +41,6 @@ class AdminLicenseController extends Controller
     public function show($id)
     {
         $license = License::with(['user', 'devices'])->findOrFail($id);
-
         return response()->json(['status' => 'success', 'data' => $license]);
     }
 
@@ -51,24 +50,26 @@ class AdminLicenseController extends Controller
     {
         $request->validate([
             'user_id'    => 'required|exists:users,id',
-            'plan'       => 'required|in:free,pro,campus',
+            'plan'       => 'required|in:free,pro,campus,beta',
             'seat_limit' => 'required|integer|min:1|max:50',
             'expires_at' => 'nullable|date|after:today',
         ]);
 
-        $key = 'WCL-' . strtoupper(Str::uuid());
+        $plan = $request->plan;
+        $key  = $this->generateKey($plan);
 
         $license = License::create([
-            'user_id'    => $request->user_id,
+            'user_id'     => $request->user_id,
             'license_key' => $key,
-            'plan'       => $request->plan,
-            'seat_limit' => $request->seat_limit,
-            'expires_at' => $request->expires_at ?? null,
-            'is_active'  => true,
+            'plan'        => $plan,
+            'seat_limit'  => $request->seat_limit,
+            'expires_at'  => $request->expires_at ?? null,
+            'is_active'   => true,
         ]);
 
-        // Sync user plan to match license
-        User::where('id', $request->user_id)->update(['plan' => $request->plan]);
+        // Sync user.plan — beta users get 'pro' tier access
+        $appPlan = $plan === 'beta' ? 'pro' : $plan;
+        User::where('id', $request->user_id)->update(['plan' => $appPlan]);
 
         return response()->json([
             'status'  => 'success',
@@ -77,34 +78,114 @@ class AdminLicenseController extends Controller
         ], 201);
     }
 
-    // ── Revoke (delete) a license key ─────────────────────────────────────────
+    // ── Update an existing license (plan, seats, expiry, status) ─────────────
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'plan'       => 'sometimes|in:free,pro,campus,beta',
+            'seat_limit' => 'sometimes|integer|min:1|max:50',
+            'expires_at' => 'nullable|date',
+            'is_active'  => 'sometimes|boolean',
+        ]);
+
+        $license = License::with('user')->findOrFail($id);
+
+        if ($request->has('plan'))       $license->plan       = $request->plan;
+        if ($request->has('seat_limit')) $license->seat_limit = $request->seat_limit;
+        if ($request->has('is_active'))  $license->is_active  = $request->is_active;
+        if ($request->has('expires_at')) $license->expires_at = $request->expires_at ?: null;
+
+        $license->save();
+
+        // Sync user.plan when plan changes
+        if ($request->has('plan') && $license->user_id) {
+            $appPlan = $request->plan === 'beta' ? 'pro' : $request->plan;
+            User::where('id', $license->user_id)->update(['plan' => $appPlan]);
+        }
+
+        // Sync user.plan when active status changes
+        if ($request->has('is_active') && $license->user_id) {
+            if ($request->is_active) {
+                $appPlan = ($license->plan === 'beta') ? 'pro' : $license->plan;
+                User::where('id', $license->user_id)->update(['plan' => $appPlan]);
+            } else {
+                User::where('id', $license->user_id)->update(['plan' => 'free']);
+            }
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'License updated.',
+            'data'    => $license->fresh(['user', 'devices']),
+        ]);
+    }
+
+    // ── Admin regenerate — preserves key format prefix ────────────────────────
+
+    public function regenerate($id)
+    {
+        $license = License::with('user')->findOrFail($id);
+
+        // Preserve the key format prefix: WCL-BETA- for beta plans, etc.
+        $newKey = $this->generateKey($license->plan);
+
+        // Wipe all devices — they must re-activate with the new key
+        $license->devices()->delete();
+        $license->update(['license_key' => $newKey]);
+
+        return response()->json([
+            'status'      => 'success',
+            'message'     => 'License key regenerated. All devices must re-activate.',
+            'license_key' => $newKey,
+            'data'        => $license->fresh(['user']),
+        ]);
+    }
+
+    // ── Revoke (permanently delete) a license ────────────────────────────────
 
     public function destroy($id)
     {
-        $license = License::findOrFail($id);
+        $license = License::with('user')->findOrFail($id);
+
+        // Downgrade user to free immediately
+        if ($license->user_id) {
+            User::where('id', $license->user_id)->update(['plan' => 'free']);
+        }
+
         // Cascade deletes devices via DB foreign key constraint
         $license->delete();
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'License revoked and deleted.',
+            'message' => 'License revoked and deleted. User downgraded to free.',
         ]);
     }
 
-    // ── Toggle active / inactive ──────────────────────────────────────────────
+    // ── Suspend / Re-activate (toggle) ───────────────────────────────────────
 
     public function toggleStatus($id)
     {
-        $license = License::findOrFail($id);
+        $license = License::with('user')->findOrFail($id);
         $license->is_active = !$license->is_active;
         $license->save();
 
-        // If deactivating, optionally wipe devices so they can't use stale sessions
-        // Keep devices so they can re-activate if re-enabled.
+        // Sync user.plan immediately — no more waiting for 24h validate cycle
+        if ($license->user_id) {
+            if ($license->is_active) {
+                $appPlan = ($license->plan === 'beta') ? 'pro' : $license->plan;
+                User::where('id', $license->user_id)->update(['plan' => $appPlan]);
+            } else {
+                // Suspended: downgrade user to free right now
+                User::where('id', $license->user_id)->update(['plan' => 'free']);
+            }
+        }
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'License status updated.',
+            'message' => $license->is_active
+                ? 'License re-activated. User plan restored.'
+                : 'License suspended. User downgraded to free.',
             'data'    => $license,
         ]);
     }
@@ -150,5 +231,27 @@ class AdminLicenseController extends Controller
                      ->get();
 
         return response()->json(['status' => 'success', 'data' => $users]);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Generate a license key that preserves the plan-specific prefix.
+     *   beta   → WCL-BETA-XXXX-XXXX-XXXX-XXXX
+     *   campus → WCL-CAMPUS-XXXX-XXXX-XXXX-XXXX
+     *   pro    → WCL-XXXX-XXXX-XXXX-XXXX
+     *   free   → WCL-FREE-XXXX-XXXX-XXXX-XXXX
+     */
+    private function generateKey(string $plan): string
+    {
+        $segments = strtoupper(substr(str_replace('-', '', Str::uuid()), 0, 16));
+        $parts    = str_split($segments, 4);
+
+        return match ($plan) {
+            'beta'   => 'WCL-BETA-'   . implode('-', $parts),
+            'campus' => 'WCL-CAMPUS-' . implode('-', $parts),
+            'free'   => 'WCL-FREE-'   . implode('-', $parts),
+            default  => 'WCL-'        . implode('-', $parts),
+        };
     }
 }

@@ -173,6 +173,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/licenses/search-users',                [\App\Http\Controllers\AdminLicenseController::class, 'searchUsers']);
         Route::post('/licenses',                            [\App\Http\Controllers\AdminLicenseController::class, 'generate']);
         Route::get('/licenses/{id}',                        [\App\Http\Controllers\AdminLicenseController::class, 'show']);
+        Route::put('/licenses/{id}',                        [\App\Http\Controllers\AdminLicenseController::class, 'update']);
+        Route::post('/licenses/{id}/regenerate',            [\App\Http\Controllers\AdminLicenseController::class, 'regenerate']);
         Route::delete('/licenses/{id}',                     [\App\Http\Controllers\AdminLicenseController::class, 'destroy']);
         Route::patch('/licenses/{id}/toggle',               [\App\Http\Controllers\AdminLicenseController::class, 'toggleStatus']);
         Route::delete('/licenses/{id}/devices',             [\App\Http\Controllers\AdminLicenseController::class, 'wipeDevices']);
